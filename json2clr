@@ -38,7 +38,7 @@ class Color {
         name = dictionary["name"] as? String
         
         if let hex = dictionary["hex"] as? String {
-            color = Color.colorFromHexString(hex)
+            color = Color.colorFromHexString(value: hex)
         } else {
             let red = dictionary["r"] as? String
             let green = dictionary["g"] as? String
@@ -56,10 +56,10 @@ class Color {
     }
     
     class func colorFromHexString(value: String) -> NSColor? {
-        var cString: String = value.stringByTrimmingCharactersInSet(.whitespaceAndNewlineCharacterSet()).uppercaseString
+        var cString: String = value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         
         if cString.hasPrefix("#") {
-            cString = (cString as NSString).substringFromIndex(1)
+            cString = (cString as NSString).substring(from: 1)
         }
         
         if cString.characters.count != 6 {
@@ -67,8 +67,7 @@ class Color {
         }
         
         var rgbValue : UInt32 = 0
-        NSScanner(string: cString).scanHexInt(&rgbValue)
-        
+        Scanner(string: cString).scanHexInt32(&rgbValue)
         return NSColor(
             red: CGFloat((rgbValue & 0xFF0000) >> 16) / 255.0,
             green: CGFloat((rgbValue & 0x00FF00) >> 8) / 255.0,
@@ -77,11 +76,11 @@ class Color {
         )
     }
     
-    class func colorFromStrings(red red: String?, green: String?, blue: String?, alpha: String?) -> NSColor? {
-        let r = Color.floatValueFromString(red) ?? 0.0
-        let g = Color.floatValueFromString(green) ?? 0.0
-        let b = Color.floatValueFromString(blue) ?? 0.0
-        let a = Color.floatValueFromString(alpha) ?? 1.0
+    class func colorFromStrings(red: String?, green: String?, blue: String?, alpha: String?) -> NSColor? {
+        let r = Color.floatValueFromString(value: red) ?? 0.0
+        let g = Color.floatValueFromString(value: green) ?? 0.0
+        let b = Color.floatValueFromString(value: blue) ?? 0.0
+        let a = Color.floatValueFromString(value: alpha) ?? 1.0
         
         return NSColor(deviceRed: r, green: g, blue: b, alpha: a)
     }
@@ -105,7 +104,7 @@ var paletteName: String!
 var inputPath: String!
 var outputPath: String!
 
-let arguments = Process.arguments
+let arguments = CommandLine.arguments
 for i in 0..<arguments.count {
     let argument = arguments[i]
     switch argument {
@@ -131,14 +130,11 @@ if nil == paletteName {
 
 // MARK: - main
 
-guard let fileData = try? NSData.dataWithContentsOfMappedFile(inputPath),
-    let jsonData = fileData as? NSData else  {
-        
-        print("\(inputPath) was not found.")
-        exit(-1)
-}
+let fileData = NSData.dataWithContentsOfMappedFile(inputPath)
 
-guard let colorsJSON = try? NSJSONSerialization.JSONObjectWithData(jsonData, options: .AllowFragments),
+let jsonData = fileData as! Data
+
+guard let colorsJSON = try? JSONSerialization.jsonObject(with: jsonData, options: .allowFragments),
     let colorDicts = colorsJSON as? NSArray else {
     // print("Error: \(error)")
     print("Error: JSON error")
@@ -165,8 +161,8 @@ if nil == outputPath {
     outputPath = "~/Library/Colors/\(paletteName).clr"
 }
 
-let filePath = (outputPath as NSString).stringByExpandingTildeInPath
-if colorList.writeToFile(filePath) {
+let filePath = (outputPath as NSString).expandingTildeInPath
+if colorList.write(toFile: filePath) {
     print("SUCCESS: saved to \(filePath)")
 } else {
     print("FAILED: failed to save to \(filePath)")
